@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1495903612 source:/home/fzinnari/CB_workspace/OpenMP_AAPP/main.c
+1496260672 source:/home/fzinnari/CB_workspace/OpenMP_AAPP/main.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
@@ -7,7 +7,7 @@
 
 1495903378 /home/fzinnari/CB_workspace/OpenMP_AAPP/BC.h
 
-1496002137 source:/home/fzinnari/CB_workspace/OpenMP_AAPP/BC.c
+1496257214 source:/home/fzinnari/CB_workspace/OpenMP_AAPP/BC.c
 	"BC.h"
 	<omp.h>
 	<float.h>

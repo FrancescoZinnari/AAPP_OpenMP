@@ -10,16 +10,24 @@ int M;
 
 
 
-void buildGraph(char* fpath) {
+void buildGraph(char* fpathIn) {
 	// read as adjacent list
-	FILE * f = fopen(fpath, "r");
+    int u, v;
+	double weight;
+
+	FILE * f = fopen(fpathIn, "r");
+    if(f == NULL){
+        printf("ERROR: something went wrong when opening input file %s.",fpathIn);
+        exit(1);
+    }
 	fscanf(f, "%d %d", &N, &M);
 	int * adjNodes = (int *)malloc(N * sizeof(int));
 	AdjEdge * adjEdges = (AdjEdge *)malloc(2 * M * sizeof(AdjEdge));
 	memset(adjNodes, -1, N * sizeof(int));
 	memset(adjEdges, 0, M * sizeof(AdjEdge));
-	int u, v;
-	double weight;
+
+
+
 	for (int i = 0; i < M; i++) {
 		fscanf(f, "%d %d %lf", &u, &v, &weight);
 		adjEdges[i].weight = weight;
@@ -52,7 +60,7 @@ void buildGraph(char* fpath) {
 	free(adjNodes);
 	free(adjEdges);
 
-
+/*
 	//print nodes - DEBUG
 	printf("NODES (COUNTER)\n");
 	for(int i=0;i<=N;i++){
@@ -65,21 +73,39 @@ void buildGraph(char* fpath) {
         printf("%d ---> %d , %f\n",i,edges[i].v,edges[i].weight);
 	}
 
+*/
+}
 
+void outputBC(double* arrayBC, char *fpathOut,int N){
+    FILE *f = fopen(fpathOut,"w");
+    if(f == NULL){
+        printf("ERROR: something went wrong when opening output file %s.",fpathOut);
+        exit(1);
+    }
+
+    for(int i=0; i<N;i++){
+        fprintf(f,"%d,%.1f\n", i, arrayBC[i]);
+    }
 }
 
 
-
 int main(int argc, char *argv[]) {
-    char *fpath = "/home/fzinnari/CB_workspace/OpenMP_AAPP/input/graph-simple.txt";
     double *arrayBC;
 
-	buildGraph(fpath);
+    if(argc<3){
+        printf("USAGE: you need to specify (1) path to input graph file and (2) path to output BC file");
+        exit(1);
+    }
+
+	buildGraph(argv[1]);
     arrayBC = BC(N, M, nodes, edges);
+    outputBC(arrayBC,argv[2],N);
+
 
     for(int i=0;i<N;i++){
         printf("\nBC of node %d -> %f",i,arrayBC[i] );
     }
 
+    free(arrayBC);
 	return 0;
 }

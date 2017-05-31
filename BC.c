@@ -29,8 +29,8 @@ double computeMinEdge(int node, int N, int M, int* nodes, Edge* edges){
     double minEdgeWeight= DBL_MAX;
 
     if(nn==NULL || nn->nOfNeighbours <= 0){
-        fprintf(stderr,"Unexpected behaviour, node %d should have neighbours", node);
-        exit(1);
+        fprintf(stderr,"Warning: node %d does not have neighbours\n", node);
+        return DBL_MAX;
     }
 
     //#pragma omp for reduction (min:minEdgeWeight)
@@ -45,9 +45,9 @@ double computeMinEdge(int node, int N, int M, int* nodes, Edge* edges){
 
 }
 
-void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* arrayBC){
+void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* arrayBC, double *minEdge){
     int *unsettled, *frontier, *ends, *settled;
-    double *distance, *nMinPath, *dep, *minEdge;
+    double *distance, *nMinPath, *dep;
     double delta;
     int flen,slen,endsLen, depth, start, end;
     omp_lock_t* lock;
@@ -59,7 +59,6 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
     distance = malloc(N*sizeof(double));
     nMinPath = malloc(N*sizeof(double));
     dep = malloc(N*sizeof(double));
-    minEdge = malloc(N*sizeof(double));
     lock = malloc(N*sizeof(omp_lock_t));
 
 
@@ -71,14 +70,12 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
         #pragma omp for
         for(int i=0; i<N; i++){
             unsettled[i] = 1;
-            //frontier[i] = 0;
             distance[i] = DBL_MAX;
             nMinPath[i] = 0.0;
             dep[i] = 0.0;
             ends[i] = 0;
             settled[i] = 0;
             omp_init_lock(&(lock[i]));
-            minEdge[i] = computeMinEdge(i,N,M,nodes,edges);
         }
 
         #pragma omp single
@@ -107,10 +104,12 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
                 //printf("Thread for index %d in for\n",i);
                 int x = frontier[i]; //<--- node from frontier
                 //printf("Thread for index %d, node %d\n", i, x);
+
                 //acquire neighbours of x
                 Neighbours nx = neighboursOfNode(x, N, M, nodes, edges);
 
                 if(nx==NULL || nx->nOfNeighbours <= 0){
+                    //printf("Here1 iteration i=%d?\n",i);
                     fprintf(stderr,"Unexpected behaviour, node %d should have neighbours", x);
                     exit(1);
                 }
@@ -139,6 +138,7 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
 
                     if(distance[y] == distance[x] + ey.weight){
                         nMinPath[y] = nMinPath[y] + nMinPath[x];
+                        //printf("%d reachable via %d, incrementing nminpath of %d to %f\n",y,x,y,nMinPath[y]);
                     }
 
                     //release lock on w
@@ -184,7 +184,7 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
 
             #pragma omp for
             for (int i=0; i<N; i++){
-                if(unsettled[i] && distance[i]<DBL_MAX){
+                if(unsettled[i] && distance[i]<delta){
                     unsettled[i]=0;
                     int t;
                     #pragma omp critical
@@ -193,6 +193,7 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
                         flen = flen+1;
                     }
                     frontier[t]=i;
+
                 }
             }
 
@@ -225,8 +226,8 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
 
         } //END OF DIJKSTRA WHILE LOOP
 
-
 /*
+
         #pragma omp single
         {
             printf("ends\n");
@@ -238,9 +239,9 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
                 printf("%d - %d\n",i,settled[i]);
             }
         }
+
+
 */
-
-
         /*** 3. DEPENDENCY SUMMATION ***/
 
         depth = endsLen - 1;
@@ -251,11 +252,15 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
             #pragma omp for
             for(int i=0; i < end - start; i++){
                 int w = settled[start+i];
+
+                if(w==root)
+                    continue;
                 //printf("%d being analyzed\n",w);
-                int dsw = 0;
+                float dsw = 0;
                 Neighbours nw = neighboursOfNode(w,N,M,nodes,edges);
 
                 if(nw==NULL || nw->nOfNeighbours <= 0){
+                    //printf("Here2?");
                     fprintf(stderr,"Unexpected behaviour, node %d should have neighbours", w);
                     exit(1);
                 }
@@ -265,14 +270,17 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
                     int v = ev.v;
 
                     if(distance[v] == distance[w]+ev.weight){
+                        //printf("Distance %d = %f, distance %d= %f, edge = %f\n",v,distance[v],w,distance[w],ev.weight);
+                        //printf("N min paths via %d = %f, n min paths via %d = %f, dep  %d= %f\n",v,nMinPath[v],w,nMinPath[w],v,dep[v]);
                         dsw = dsw + (nMinPath[w]/nMinPath[v])*(1+dep[v]);
+                        //printf("dsw %f for %d root %d\n",dsw,w,root);
                     }
                 }
 
                 dep[w] = dsw;
                 if (w!=root){
                     //atomicadd
-                    printf("\n**** PARTIAL CONTRIBUTE TO CB, DEP FROM %d PASSING FROM %d = %f  *******\n", root, w, dep[w]);
+                    //printf("\n**** PARTIAL CONTRIBUTE TO CB, DEP FROM %d PASSING FROM %d = %f  *******\n", root, w, dep[w]);
                     #pragma omp atomic
                         arrayBC[w] = arrayBC[w]+dep[w];
                 }
@@ -291,16 +299,23 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
 
 
 double* BC(int N,int M,int* nodes,Edge* edges /*calNode, calEdge, bcpath.c_str(), ebcpath.c_str(), warp_size*/){
-    double* arrayBC;
+    double* arrayBC, *minEdge;
     arrayBC = malloc(N*sizeof(double));
+    minEdge = malloc(N*sizeof(double));
 
 
-    printf("I'm Here!\n");
+    #pragma omp parallel for
+    for(int i=0;i<N;i++){
+        arrayBC[i] = 0;
+        minEdge[i] = computeMinEdge(i,N,M,nodes,edges);
+    }
 
     #pragma omp parallel for
     for(int i=0; i<N; i++){
         //printf("I'm Here! for node %d\n", i);
-        processSingleRoot(i,N,M,nodes,edges,arrayBC);
+        if(minEdge[i]!=DBL_MAX){
+            processSingleRoot(i,N,M,nodes,edges,arrayBC,minEdge);
+        }
     }
 
     return arrayBC;
