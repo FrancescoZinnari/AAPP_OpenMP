@@ -55,7 +55,6 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
     double *distance, *nMinPath, *dep;
     double delta;
     int flen,slen,endsLen, depth, start, end;
-    omp_lock_t* lock;
 
     unsettled = malloc(N*sizeof(int));
     frontier = malloc(N*sizeof(int));
@@ -64,15 +63,11 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
     distance = malloc(N*sizeof(double));
     nMinPath = malloc(N*sizeof(double));
     dep = malloc(N*sizeof(double));
-    lock = malloc(N*sizeof(omp_lock_t));
 
 
-
-    #pragma omp parallel
     {
         /*** 1. INITIALIZATION ***/
 
-        #pragma omp for
         for(int i=0; i<N; i++){
             unsettled[i] = 1;
             distance[i] = DBL_MAX;
@@ -80,11 +75,8 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
             dep[i] = 0.0;
             ends[i] = 0;
             settled[i] = 0;
-            omp_init_lock(&(lock[i]));
         }
 
-        #pragma omp single
-        {
         distance[root] = 0;
         nMinPath[root] = 1;
         unsettled[root] = 0;
@@ -96,7 +88,6 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
         ends[1] = 1;
         endsLen = 2;
         delta = 0;
-        }
 
         /*** 2. DIJKSTRA ***/
 
@@ -104,7 +95,6 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
         {
             /*** TENTATIVE DISTANCE ***/
 
-            #pragma omp for
             for(int i=0; i<flen;i++){
                 int x = frontier[i]; //<--- node from frontier
 
@@ -121,9 +111,6 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
                     Edge ey = nx->neighbours[j]; //<--- edge to neighbour node
                     int y = ey.v;
 
-                    //acquire lock on y
-                    omp_set_lock(&(lock[y]));
-
                     if (unsettled[y]==1 && (distance[y] > (distance[x] + ey.weight))){
                         distance[y] = distance[x] + ey.weight;
                         nMinPath[y] = 0;
@@ -133,9 +120,6 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
                         nMinPath[y] = nMinPath[y] + nMinPath[x];
                     }
 
-                    //release lock on w
-                    omp_unset_lock(&(lock[y]));
-
                 } //END FOR ON NEIGHBOURS
             } //END FOR ON FRONTIER
 
@@ -143,12 +127,8 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
 
             /*** COMPUTE DELTA ***/
 
-            #pragma omp single
-            {
-                delta = DBL_MAX;
-            }
+            delta = DBL_MAX;
 
-            #pragma omp for reduction(min:delta)
             for(int i=0; i<N;i++){
                 if(unsettled[i] && distance[i]<DBL_MAX){
                     if(distance[i] + minEdge[i] < delta){
@@ -159,22 +139,14 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
 
             /*** UPDATE FRONTIER ***/
 
-            #pragma omp single
+            flen = 0;
 
-            {
-                flen = 0;
-            }
-
-            #pragma omp for
             for (int i=0; i<N; i++){
                 if(unsettled[i] && distance[i]<delta){
                     unsettled[i]=0;
                     int t;
-                    #pragma omp critical
-                    {
-                        t = flen;
-                        flen = flen+1;
-                    }
+                    t = flen;
+                    flen = flen+1;
                     frontier[t]=i;
 
                 }
@@ -184,23 +156,15 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
             /*** UPDATE DAG ***/
 
             if(flen>0){
-                #pragma omp single nowait
-                {
-                    ends[endsLen] = ends[endsLen - 1] + flen;
-                    endsLen++;
-                }
-                #pragma omp for
+
+                ends[endsLen] = ends[endsLen - 1] + flen;
+                endsLen++;
+
                 for (int i=0; i<flen; i++){
                     settled[slen+i]=frontier[i];
                 }
-
-                #pragma omp single
-                {
-                    slen = slen + flen;
-                }
+                slen = slen + flen;
             }
-
-            #pragma omp barrier
 
 
         } //END OF DIJKSTRA WHILE LOOP
@@ -213,7 +177,6 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
             start = ends[depth -1];
             end = ends[depth] ;
 
-            #pragma omp for
             for(int i=0; i < end - start; i++){
                 int w = settled[start+i];
 
@@ -240,17 +203,11 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
                 dep[w] = dsw;
 
                 if (w!=root){
-                    //atomicadd
                     #pragma omp atomic
                         arrayBC[w] = arrayBC[w]+dep[w];
                 }
             }
-            #pragma omp barrier
-
-            #pragma omp single
-            {
-                depth = depth - 1;
-            }
+            depth = depth - 1;
         } //end of while on DAG
 
 
@@ -263,7 +220,6 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
     free(distance);
     free(nMinPath);
     free(dep);
-    free(lock);
 }
 
 

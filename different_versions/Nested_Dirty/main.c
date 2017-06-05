@@ -60,6 +60,21 @@ void buildGraph(char* fpathIn) {
 	}
 	free(adjNodes);
 	free(adjEdges);
+
+/*
+	//print nodes - DEBUG
+	printf("NODES (COUNTER)\n");
+	for(int i=0;i<=N;i++){
+        printf("%d ---> %i\n",i,nodes[i]);
+	}
+
+    //print edges - DEBUG
+	printf("EDGES\n");
+	for(int i=0;i<2*M;i++){
+        printf("%d ---> %d , %f\n",i,edges[i].v,edges[i].weight);
+	}
+
+*/
 }
 
 void outputBC(double* arrayBC, char *fpathOut){
@@ -71,10 +86,7 @@ void outputBC(double* arrayBC, char *fpathOut){
 
     for(int i=0; i<N;i++){
         fprintf(f,"%d,%.1f\n", i, arrayBC[i]);
-        printf("\nBC of node %d -> %f",i,arrayBC[i] );
     }
-
-    fclose(f);
 }
 
 int main(int argc, char *argv[]) {
@@ -100,6 +112,10 @@ int main(int argc, char *argv[]) {
     arrayBC = BC(N, M, nodes, edges);
     outputBC(arrayBC,outputPath);
 
+
+    for(int i=0;i<N;i++){
+        printf("\nBC of node %d -> %f",i,arrayBC[i] );
+    }
 
     free(arrayBC);
 	return 0;

@@ -224,6 +224,7 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
                 Neighbours nw = neighboursOfNode(w,N,M,nodes,edges);
 
                 if(nw==NULL || nw->nOfNeighbours <= 0){
+                    //printf("Here2?");
                     fprintf(stderr,"Unexpected behaviour, node %d should have neighbours", w);
                     exit(1);
                 }
@@ -233,7 +234,10 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
                     int v = ev.v;
 
                     if(distance[v] == distance[w]+ev.weight){
+                        //printf("Distance %d = %f, distance %d= %f, edge = %f\n",v,distance[v],w,distance[w],ev.weight);
+                        //printf("N min paths via %d = %f, n min paths via %d = %f, dep  %d= %f\n",v,nMinPath[v],w,nMinPath[w],v,dep[v]);
                         dsw = dsw + (nMinPath[w]/nMinPath[v])*(1+dep[v]);
+                        //printf("dsw %f for %d root %d\n",dsw,w,root);
                     }
                 }
 
@@ -273,19 +277,14 @@ double* BC(int N,int M,int* nodes,Edge* edges){
     minEdge = malloc(N*sizeof(double));
 
 
-    #pragma omp parallel
-    {
-        #pragma omp for
-        for(int i=0;i<N;i++){
-            arrayBC[i] = 0;
-            minEdge[i] = computeMinEdge(i,N,M,nodes,edges);
-        }
+    for(int i=0;i<N;i++){
+        arrayBC[i] = 0;
+        minEdge[i] = computeMinEdge(i,N,M,nodes,edges);
+    }
 
-        #pragma omp for
-        for(int i=0; i<N; i++){
-            if(minEdge[i]!=DBL_MAX){
-                processSingleRoot(i,N,M,nodes,edges,arrayBC,minEdge);
-            }
+    for(int i=0; i<N; i++){
+        if(minEdge[i]!=DBL_MAX){
+            processSingleRoot(i,N,M,nodes,edges,arrayBC,minEdge);
         }
     }
 
