@@ -71,7 +71,7 @@ void outputBC(double* arrayBC, char *fpathOut){
 
     for(int i=0; i<N;i++){
         fprintf(f,"%d,%.1f\n", i, arrayBC[i]);
-        printf("\nBC of node %d -> %f",i,arrayBC[i] );
+        //printf("\nBC of node %d -> %f",i,arrayBC[i] );
     }
 
     fclose(f);
@@ -81,6 +81,7 @@ int main(int argc, char *argv[]) {
     double *arrayBC;
     char* inputPath, *outputPath;
     unsigned int num_threads;
+    double start, end;
 
     if(argc<4){
         printf("USAGE: you need to specify (1) path to input graph file, (2) path to output BC file and (3) number of threads of the pool");
@@ -97,9 +98,12 @@ int main(int argc, char *argv[]) {
     #endif
 
 	buildGraph(inputPath);
-    arrayBC = BC(N, M, nodes, edges);
-    outputBC(arrayBC,outputPath);
 
+    start = omp_get_wtime();
+    arrayBC = BC(N, M, nodes, edges);
+    end =  omp_get_wtime();
+    outputBC(arrayBC,outputPath);
+    printf("Time elapsed %f", (end-start));
 
     free(arrayBC);
 	return 0;

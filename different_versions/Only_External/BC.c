@@ -183,7 +183,7 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
                 if(w==root)
                     continue;
 
-                float dsw = 0;
+                double dsw = 0;
                 Neighbours nw = neighboursOfNode(w,N,M,nodes,edges);
 
                 if(nw==NULL || nw->nOfNeighbours <= 0){

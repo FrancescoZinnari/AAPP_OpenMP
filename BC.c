@@ -85,7 +85,7 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
 
         #pragma omp single
         {
-        distance[root] = 0;
+        distance[root] = 0.0;
         nMinPath[root] = 1;
         unsettled[root] = 0;
         frontier[0] = root;
@@ -95,7 +95,7 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
         ends[0] = 0;
         ends[1] = 1;
         endsLen = 2;
-        delta = 0;
+        delta = 0.0;
         }
 
         /*** 2. DIJKSTRA ***/
@@ -217,10 +217,11 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
             for(int i=0; i < end - start; i++){
                 int w = settled[start+i];
 
+                /*
                 if(w==root)
-                    continue;
+                    continue;*/
 
-                float dsw = 0;
+                double dsw = 0.0;
                 Neighbours nw = neighboursOfNode(w,N,M,nodes,edges);
 
                 if(nw==NULL || nw->nOfNeighbours <= 0){
@@ -233,7 +234,7 @@ void processSingleRoot(int root, int N, int M, int* nodes, Edge* edges, double* 
                     int v = ev.v;
 
                     if(distance[v] == distance[w]+ev.weight){
-                        dsw = dsw + (nMinPath[w]/nMinPath[v])*(1+dep[v]);
+                        dsw = dsw + ((double)(nMinPath[w]/nMinPath[v]))*(1.0+dep[v]);
                     }
                 }
 
@@ -277,7 +278,7 @@ double* BC(int N,int M,int* nodes,Edge* edges){
     {
         #pragma omp for
         for(int i=0;i<N;i++){
-            arrayBC[i] = 0;
+            arrayBC[i] = 0.0;
             minEdge[i] = computeMinEdge(i,N,M,nodes,edges);
         }
 
